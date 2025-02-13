@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock, ChevronLeft, ChevronRight as ChevronRightIcon } from 'lucide-react';
+import { Button } from "./ui/button";
 
 const CircularCard = ({ circular }) => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const CircularCard = ({ circular }) => {
         </CardTitle>
         <div className="flex items-center text-gray-500 text-sm gap-1">
           <Clock className="h-4 w-4" />
-          {new Date(circular.date).toLocaleDateString()}
+          {circular.date}
         </div>
       </CardHeader>
       <CardContent>
@@ -38,6 +39,89 @@ const CircularCard = ({ circular }) => {
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+const Pagination = ({ currentPage, hasNextPage, onPageChange, totalPages = 10 }) => {
+  const renderPageNumbers = () => {
+    const pages = [];
+    const showEllipsisStart = currentPage > 3;
+    const showEllipsisEnd = currentPage < totalPages - 2;
+
+    if (showEllipsisStart) {
+      pages.push(
+        <Button
+          key={1}
+          variant="ghost"
+          className="h-8 w-8 p-0 text-[#3C4A94]"
+          onClick={() => onPageChange(1)}
+        >
+          1
+        </Button>,
+        <span key="ellipsis-start" className="px-2 text-gray-400">...</span>
+      );
+    }
+
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
+      pages.push(
+        <Button
+          key={i}
+          variant={currentPage === i ? "default" : "ghost"}
+          className={`h-8 w-8 p-0 ${
+            currentPage === i 
+              ? "bg-[#3C4A94] text-white hover:bg-[#2d3970]" 
+              : "text-[#3C4A94] hover:bg-[#D6D5E9] hover:text-[#2d3970]"
+          }`}
+          onClick={() => onPageChange(i)}
+        >
+          {i}
+        </Button>
+      );
+    }
+
+    if (showEllipsisEnd) {
+      pages.push(
+        <span key="ellipsis-end" className="px-2 text-gray-400">...</span>,
+        <Button
+          key={totalPages}
+          variant="ghost"
+          className="h-8 w-8 p-0 text-[#3C4A94]"
+          onClick={() => onPageChange(totalPages)}
+        >
+          {totalPages}
+        </Button>
+      );
+    }
+
+    return pages;
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <Button
+        variant="outline"
+        className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Prev
+      </Button>
+
+      <div className="flex items-center">
+        {renderPageNumbers()}
+      </div>
+
+      <Button
+        variant="outline"
+        className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={!hasNextPage}
+      >
+        Next
+        <ChevronRightIcon className="h-4 w-4" />
+      </Button>
+    </div>
   );
 };
 
@@ -97,38 +181,14 @@ const CircularList = () => {
         )}
 
         {/* Pagination */}
-        {circulars?.length > 5 && (
-          <div className="mt-8 flex justify-center items-center gap-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors
-                ${currentPage === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-[#3C4A94] hover:bg-[#D6D5E9] hover:text-[#2d3970] border shadow-sm'
-                }`}
-            >
-              Previous
-            </button>
-
-            {/* Current Page Indicator */}
-            <span className="px-4 py-2 rounded-md bg-[#D6D5E9] text-[#3C4A94] font-medium">
-              Page {currentPage}
-            </span>
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={!hasNextPage}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors
-                ${!hasNextPage
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-[#3C4A94] hover:bg-[#D6D5E9] hover:text-[#2d3970] border shadow-sm'
-                }`}
-            >
-              Next
-            </button>
-          </div>
-        )}
+        <div className="mt-8">
+          <Pagination 
+            currentPage={currentPage}
+            hasNextPage={hasNextPage}
+            onPageChange={handlePageChange}
+            totalPages={10}
+          />
+        </div>
 
         {/* Loading More Indicator */}
         {loading && circulars[currentPage] && (
