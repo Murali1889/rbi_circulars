@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 const CircularDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getCircularById } = useData();
+  const { getCircularById, circulars } = useData();
   const [circular, setCircular] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,7 +17,13 @@ const CircularDetail = () => {
       try {
         const data = await getCircularById(id);
         if (data) {
-          setCircular(data);
+          const circularWithUrls = circulars[1]?.find(c => c.id == id);
+          console.log(circularWithUrls)
+          setCircular({
+            ...data,
+            documentUrl: circularWithUrls?.documentUrl,
+            pdfUrl: circularWithUrls?.pdfUrl
+          });
         } else {
           navigate('/not-found');
         }
@@ -29,7 +35,7 @@ const CircularDetail = () => {
     };
 
     fetchCircular();
-  }, [id, getCircularById, navigate]);
+  }, [id, getCircularById, navigate, circulars]);
 
   const renderOverviewTab = () => {
     return (
@@ -91,18 +97,20 @@ const CircularDetail = () => {
             <CardContent>
               <div className="space-y-3">
                 {circular.past_circular_references?.map((ref, index) => (
-                  <div key={index} className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-[#3C4A94] font-medium">Reference:</span>
-                      <span className="text-gray-600">{ref.reference || 'Not provided'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#3C4A94] font-medium">Relationship:</span>
-                      <span className="text-gray-600">{ref.relationship}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#3C4A94] font-medium">Date:</span>
-                      <span className="text-gray-600">{ref.date}</span>
+                  <div key={index} className="p-4 rounded-lg border border-gray-200 hover:border-[#3C4A94] transition-colors">
+                    <div className="space-y-2">
+                      <div className="flex justify-between flex-wrap gap-2">
+                        <span className="text-[#3C4A94] font-medium">Reference:</span>
+                        <span className="text-gray-600">{ref.reference || 'Not provided'}</span>
+                      </div>
+                      <div className="flex justify-between flex-wrap gap-2">
+                        <span className="text-[#3C4A94] font-medium">Relationship:</span>
+                        <span className="text-gray-600">{ref.relationship}</span>
+                      </div>
+                      <div className="flex justify-between flex-wrap gap-2">
+                        <span className="text-[#3C4A94] font-medium">Date:</span>
+                        <span className="text-gray-600">{ref.date}</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -221,7 +229,35 @@ const CircularDetail = () => {
         <Card className="bg-white shadow-lg">
           {/* Header */}
           <CardHeader className="border-b">
-            <CardTitle className="text-2xl text-[#3C4A94]">{circular.title}</CardTitle>
+            <div className="space-y-4">
+              <CardTitle className="text-2xl text-[#3C4A94]">{circular.title}</CardTitle>
+              
+              {/* Document Actions */}
+              <div className="flex flex-wrap gap-4">
+                {circular?.documentUrl && (
+                  <a
+                    href={circular.documentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#3C4A94] text-white rounded-md hover:bg-[#2d3970] transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View Document
+                  </a>
+                )}
+                {circular?.pdfUrl && (
+                  <a
+                    href={circular.pdfUrl}
+                    target="_blank"
+                    download
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-[#3C4A94] text-[#3C4A94] rounded-md hover:bg-[#D6D5E9] transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download PDF
+                  </a>
+                )}
+              </div>
+            </div>
           </CardHeader>
 
           <CardContent className="p-0">

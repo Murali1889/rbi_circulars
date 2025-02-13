@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-import { getFirestore, collection, getDocs, query, orderBy, limit, startAfter, doc, getDoc } from 'firebase/firestore';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 
 const DataContext = createContext();
 
@@ -13,46 +13,50 @@ export const DataProvider = ({ children }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  const fetchCirculars = async (page = 1) => {
-    // If we already have this page's data, don't fetch again
-    if (circulars[page]) return;
-
-    setLoading(true);
-    try {
-      const db = getFirestore();
-      const circularsRef = collection(db, 'circulars');
-      
-      let q;
-      if (page === 1) {
-        q = query(circularsRef, orderBy('date', 'desc'), limit(ITEMS_PER_PAGE));
-      } else {
-        // Use the last document from the previous page to paginate
-        q = query(
-          circularsRef,
-          orderBy('date', 'desc'),
-          startAfter(lastDoc),
-          limit(ITEMS_PER_PAGE)
-        );
+  // Fetch all circulars when component mounts
+  useEffect(() => {
+    const fetchAllCirculars = async () => {
+      setLoading(true);
+      try {
+        const db = getFirestore();
+        const circularsRef = collection(db, 'circulars');
+        const q = query(circularsRef);
+        
+        const snapshot = await getDocs(q);
+        const allDocs = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+  
+        // Sort documents by date
+        const sortedDocs = allDocs.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateB - dateA; // Most recent first
+        });
+  
+        // Organize documents into pages
+        const totalPages = Math.ceil(sortedDocs.length / ITEMS_PER_PAGE);
+        const organizedCirculars = {};
+        
+        for (let page = 1; page <= totalPages; page++) {
+          const startIndex = (page - 1) * ITEMS_PER_PAGE;
+          organizedCirculars[page] = sortedDocs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+        }
+  
+        setCirculars(organizedCirculars);
+        if (snapshot.docs.length > 0) {
+          setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        }
+      } catch (error) {
+        console.error('Error fetching circulars:', error);
+      } finally {
+        setLoading(false);
       }
-
-      const snapshot = await getDocs(q);
-      const newCirculars = {};
-      const docs = [];
-
-      snapshot.forEach((doc) => {
-        docs.push({ id: doc.id, ...doc.data() });
-      });
-
-      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-      
-      newCirculars[page] = docs;
-      setCirculars(prev => ({ ...prev, ...newCirculars }));
-    } catch (error) {
-      console.error('Error fetching circulars:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+  
+    fetchAllCirculars();
+  }, []);
 
   const searchCirculars = async (searchTerm) => {
     setLoading(true);
@@ -114,7 +118,6 @@ export const DataProvider = ({ children }) => {
     loading,
     currentPage,
     setCurrentPage,
-    fetchCirculars,
     searchCirculars,
     getCircularById,
   };
@@ -125,3 +128,5 @@ export const DataProvider = ({ children }) => {
     </DataContext.Provider>
   );
 };
+
+export default DataProvider;
