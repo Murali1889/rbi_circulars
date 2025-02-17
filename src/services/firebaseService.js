@@ -18,7 +18,7 @@ import {
 export class FirebaseService {
   static async getCirculars(page = 1, itemsPerPage = 6, lastDoc = null) {
     try {
-      const circularsRef = collection(db, 'circulars');
+      const circularsRef = collection(db, 'rbi_circulars');
       let q = query(
         circularsRef,
         orderBy('date', 'desc'),
@@ -56,7 +56,7 @@ export class FirebaseService {
 
   static async getCircularById(id) {
     try {
-      const circularRef = doc(db, 'circulars', id);
+      const circularRef = doc(db, 'rbi_circulars', id);
       const circularDoc = await getDoc(circularRef);
 
       if (!circularDoc.exists()) {
@@ -81,7 +81,7 @@ export class FirebaseService {
 
   static async searchCirculars(searchTerm) {
     try {
-      const circularsRef = collection(db, 'circulars');
+      const circularsRef = collection(db, 'rbi_circulars');
       const q = query(
         circularsRef,
         where('searchableTitle', '>=', searchTerm.toLowerCase()),
@@ -103,7 +103,7 @@ export class FirebaseService {
 
   static async getUserCirculars(userId) {
     try {
-      const circularsRef = collection(db, 'circulars');
+      const circularsRef = collection(db, 'rbi_circulars');
       const q = query(
         circularsRef,
         where('userId', '==', userId),

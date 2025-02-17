@@ -36,7 +36,7 @@ const Navbar = () => {
   };
 
   const handleResultClick = (id) => {
-    navigate(`/circular/${id}`);
+    navigate(`/rbi/circular/${id}`);
     setSearchTerm('');
     setSearchResults([]);
   };
