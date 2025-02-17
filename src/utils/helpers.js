@@ -27,7 +27,7 @@ export const truncateText = (text, maxLength) => {
 
 export const searchCirculars = async (searchTerm, maxResults = 5) => {
   try {
-    const circularsRef = collection(db, 'circulars');
+    const circularsRef = collection(db, 'rbi_circulars');
     const q = query(
       circularsRef,
       where('searchableTitle', '>=', searchTerm.toLowerCase()),

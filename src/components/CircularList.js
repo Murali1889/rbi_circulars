@@ -30,7 +30,7 @@ const CircularCard = ({ circular }) => {
   
     return (
       <Card 
-        onClick={() => navigate(`/circular/${circular.id}`)}
+        onClick={() => navigate(`/rbi/circular/${circular.id}`)}
         className="bg-white hover:shadow-lg transition-all cursor-pointer border-0 shadow-sm group relative"
       >
         <CardHeader className="pb-3">
@@ -104,163 +104,183 @@ const CircularCard = ({ circular }) => {
     );
   };
 
-const Pagination = ({ currentPage, hasNextPage, onPageChange, totalPages = 10 }) => {
-  const renderPageNumbers = () => {
-    const pages = [];
-    const showEllipsisStart = currentPage > 3;
-    const showEllipsisEnd = currentPage < totalPages - 2;
-
-    if (showEllipsisStart) {
-      pages.push(
-        <Button
-          key={1}
-          variant="ghost"
-          className="h-8 w-8 p-0 text-[#3C4A94]"
-          onClick={() => onPageChange(1)}
-        >
-          1
-        </Button>,
-        <span key="ellipsis-start" className="px-2 text-gray-400">...</span>
+  const Pagination = ({ 
+    currentPage, 
+    totalPages, 
+    onPageChange,
+    siblingCount = 1,
+    boundaryCount = 1
+  }) => {
+    // Generate page range
+    const range = (start, end) => {
+      let length = end - start + 1;
+      return Array.from({ length }, (_, idx) => idx + start);
+    };
+  
+    // Generate pagination items
+    const generatePaginationItems = () => {
+      // Total numbers to be shown
+      const totalNumbers = siblingCount + boundaryCount + 2;
+  
+      // Case 1: If total pages is less than total numbers we want to show
+      if (totalPages <= totalNumbers) {
+        return range(1, totalPages);
+      }
+  
+      // Calculate left and right sibling index
+      const leftSiblingIndex = Math.max(currentPage - siblingCount, boundaryCount);
+      const rightSiblingIndex = Math.min(
+        currentPage + siblingCount,
+        totalPages - boundaryCount
       );
-    }
-
-    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 1); i++) {
-      pages.push(
+  
+      // Should show dots
+      const shouldShowLeftDots = leftSiblingIndex > boundaryCount + 2;
+      const shouldShowRightDots = rightSiblingIndex < totalPages - (boundaryCount + 1);
+  
+      // Case 2: No left dots to show, but rights dots to be shown
+      if (!shouldShowLeftDots && shouldShowRightDots) {
+        const leftItemCount = boundaryCount + 2 * siblingCount + 2;
+        const leftRange = range(1, leftItemCount);
+        return [...leftRange, "...", totalPages];
+      }
+  
+      // Case 3: No right dots to show, but left dots to be shown
+      if (shouldShowLeftDots && !shouldShowRightDots) {
+        const rightItemCount = boundaryCount + 2 * siblingCount + 2;
+        const rightRange = range(totalPages - rightItemCount + 1, totalPages);
+        return [1, "...", ...rightRange];
+      }
+  
+      // Case 4: Both left and right dots to be shown
+      if (shouldShowLeftDots && shouldShowRightDots) {
+        const middleRange = range(leftSiblingIndex, rightSiblingIndex);
+        return [1, "...", ...middleRange, "...", totalPages];
+      }
+    };
+  
+    const paginationItems = generatePaginationItems();
+  
+    const renderPaginationButton = (item, index) => {
+      if (item === "...") {
+        return (
+          <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+            ...
+          </span>
+        );
+      }
+  
+      return (
         <Button
-          key={i}
-          variant={currentPage === i ? "default" : "ghost"}
+          key={item}
+          variant={currentPage === item ? "default" : "ghost"}
           className={`h-8 w-8 p-0 ${
-            currentPage === i 
+            currentPage === item 
               ? "bg-[#3C4A94] text-white hover:bg-[#2d3970]" 
               : "text-[#3C4A94] hover:bg-[#D6D5E9] hover:text-[#2d3970]"
           }`}
-          onClick={() => onPageChange(i)}
+          onClick={() => onPageChange(item)}
         >
-          {i}
+          {item}
         </Button>
       );
-    }
-
-    if (showEllipsisEnd) {
-      pages.push(
-        <span key="ellipsis-end" className="px-2 text-gray-400">...</span>,
-        <Button
-          key={totalPages}
-          variant="ghost"
-          className="h-8 w-8 p-0 text-[#3C4A94]"
-          onClick={() => onPageChange(totalPages)}
-        >
-          {totalPages}
-        </Button>
-      );
-    }
-
-    return pages;
-  };
-
-  return (
-    <div className="flex items-center justify-center gap-2">
-      <Button
-        variant="outline"
-        className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Prev
-      </Button>
-
-      <div className="flex items-center">
-        {renderPageNumbers()}
-      </div>
-
-      <Button
-        variant="outline"
-        className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={!hasNextPage}
-      >
-        Next
-        <ChevronRightIcon className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-};
-
-const CircularList = () => {
-  const { page = 1 } = useParams();
-  const currentPage = parseInt(page);
-  const navigate = useNavigate();
-  const { circulars, loading, setCurrentPage } = useData();
-
-  useEffect(() => {
-    setCurrentPage(currentPage);
-    // fetchCirculars(currentPage);
-  }, [currentPage, setCurrentPage]);
-
-  const handlePageChange = (newPage) => {
-    if (newPage < 1) return;
-    navigate(`/page/${newPage}`);
-  };
-
-  if (loading && !circulars[currentPage]) {
+    };
+  
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-[#3C4A94] rounded-full border-t-transparent"></div>
+      <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Prev
+        </Button>
+  
+        <div className="flex items-center">
+          {paginationItems.map((item, index) => renderPaginationButton(item, index))}
+        </div>
+  
+        <Button
+          variant="outline"
+          className="h-8 px-3 border border-[#3C4A94] text-[#3C4A94]"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+        >
+          Next
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
       </div>
     );
-  }
+  };
 
-  const currentCirculars = circulars[currentPage] || [];
-  const hasNextPage = currentCirculars.length === 6;
-
-  return (
-    <div className="min-h-screen bg-[#D6D5E9] bg-opacity-30">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#3C4A94]">Circulars</h1>
-          <p className="text-gray-600 mt-2">Browse and search through all circulars</p>
+const CircularList = () => {
+    const { page = 1 } = useParams();
+    const currentPage = parseInt(page);
+    const navigate = useNavigate();
+    const { circulars, loading, totalPages, setCurrentPage } = useData();
+  
+    useEffect(() => {
+      setCurrentPage(currentPage);
+    }, [currentPage, setCurrentPage]);
+  
+    const handlePageChange = (newPage) => {
+      if (newPage < 1 || newPage > totalPages) return;
+      navigate(`/rbi/page/${newPage}`);
+    };
+  
+    if (loading && !circulars[currentPage]) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin h-8 w-8 border-4 border-[#3C4A94] rounded-full border-t-transparent"></div>
         </div>
-
-        {/* Grid of Circulars */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentCirculars.map((circular) => (
-            <CircularCard key={circular.id} circular={circular} />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {currentCirculars.length === 0 && !loading && (
-          <Card className="py-12 text-center">
-            <CardContent>
+      );
+    }
+  
+    const currentCirculars = circulars[currentPage] || [];
+  
+    return (
+      <div className="min-h-screen bg-[#D6D5E9] bg-opacity-30">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-[#3C4A94]">Circulars</h1>
+            <p className="text-gray-600 mt-2">Browse and search through all circulars</p>
+          </div>
+  
+          {/* Grid of Circulars */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentCirculars.map((circular) => (
+              <CircularCard key={circular.id} circular={circular} />
+            ))}
+          </div>
+  
+          {/* Empty State */}
+          {currentCirculars.length === 0 && !loading && (
+            <div className="text-center py-12">
               <h3 className="text-lg font-medium text-[#3C4A94]">No circulars found</h3>
               <p className="mt-2 text-gray-500">
                 There are no circulars available for this page.
               </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Pagination */}
-        <div className="mt-8">
-          <Pagination 
-            currentPage={currentPage}
-            hasNextPage={hasNextPage}
-            onPageChange={handlePageChange}
-            totalPages={10}
-          />
+            </div>
+          )}
+  
+          {/* Pagination */}
+          {totalPages > 0 && (
+            <div className="mt-8">
+              <Pagination 
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                siblingCount={1}
+                boundaryCount={1}
+              />
+            </div>
+          )}
         </div>
-
-        {/* Loading More Indicator */}
-        {loading && circulars[currentPage] && (
-          <div className="mt-6 text-center text-[#3C4A94]">
-            Loading more circulars...
-          </div>
-        )}
       </div>
-    </div>
-  );
+    );
 };
 
 export default CircularList;

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, limit } from 'firebase/firestore';
 
 const DataContext = createContext();
 
@@ -11,15 +11,16 @@ export const DataProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [lastDoc, setLastDoc] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0)
   const ITEMS_PER_PAGE = 6;
 
   // Fetch all circulars when component mounts
   useEffect(() => {
-    const fetchAllCirculars = async () => {
+    const fetchCirculars = async () => {
       setLoading(true);
       try {
         const db = getFirestore();
-        const circularsRef = collection(db, 'circulars');
+        const circularsRef = collection(db, 'rbi_circulars');
         const q = query(circularsRef);
         
         const snapshot = await getDocs(q);
@@ -27,42 +28,41 @@ export const DataProvider = ({ children }) => {
           id: doc.id,
           ...doc.data()
         }));
-  
-        // Sort documents by date
+
+        // Sort by date
         const sortedDocs = allDocs.sort((a, b) => {
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
-          return dateB - dateA; // Most recent first
+          return dateB - dateA;
         });
-  
-        // Organize documents into pages
-        const totalPages = Math.ceil(sortedDocs.length / ITEMS_PER_PAGE);
+
+        // Calculate total pages
+        const calculatedTotalPages = Math.ceil(sortedDocs.length / ITEMS_PER_PAGE);
+        setTotalPages(calculatedTotalPages);
+
+        // Organize into pages
         const organizedCirculars = {};
-        
-        for (let page = 1; page <= totalPages; page++) {
+        for (let page = 1; page <= calculatedTotalPages; page++) {
           const startIndex = (page - 1) * ITEMS_PER_PAGE;
           organizedCirculars[page] = sortedDocs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
         }
-  
+
         setCirculars(organizedCirculars);
-        if (snapshot.docs.length > 0) {
-          setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        }
       } catch (error) {
         console.error('Error fetching circulars:', error);
       } finally {
         setLoading(false);
       }
     };
-  
-    fetchAllCirculars();
+
+    fetchCirculars();
   }, []);
 
   const searchCirculars = async (searchTerm) => {
     setLoading(true);
     try {
       const db = getFirestore();
-      const circularsRef = collection(db, 'circulars');
+      const circularsRef = collection(db, 'rbi_circulars'); // Updated collection name
       const q = query(circularsRef, orderBy('title'), limit(10));
       const snapshot = await getDocs(q);
       
@@ -88,29 +88,71 @@ export const DataProvider = ({ children }) => {
     if (circularAnalysis[id]) {
       return circularAnalysis[id];
     }
-
-    // If not found in cache, fetch from circular_analysis collection
+  
     try {
       const db = getFirestore();
-      const docRef = doc(db, 'circular_analysis', id);
-      const docSnap = await getDoc(docRef);
+      // Fetch the analysis data
+      const analysisRef = doc(db, 'rbi_circular_analysis', id);
+      const analysisSnap = await getDoc(analysisRef);
       
-      if (docSnap.exists()) {
-        const analysisData = { id: docSnap.id, ...docSnap.data() };
-        console.log(analysisData)
-        // Cache the analysis data
-        setCircularAnalysis(prev => ({
-          ...prev,
-          [id]: analysisData
-        }));
-        return analysisData;
+      if (!analysisSnap.exists()) {
+        return null;
       }
-      return null;
+  
+      const analysisData = analysisSnap.data();
+  
+      // Fetch impacted clients details
+      let impactedClients = [];
+      if (analysisData.impacted_client_ids && analysisData.impacted_client_ids.length > 0) {
+        const clientPromises = analysisData.impacted_client_ids.map(clientId => 
+          getDoc(doc(db, 'hyperverge_clients', clientId))
+        );
+        const clientSnapshots = await Promise.all(clientPromises);
+        
+        impactedClients = clientSnapshots
+          .filter(snap => snap.exists())
+          .map(snap => ({
+            id: snap.id,
+            ...snap.data()
+          }));
+      }
+  
+      // Fetch impacted products details
+      let impactedProducts = [];
+      if (analysisData.impacted_product_ids && analysisData.impacted_product_ids.length > 0) {
+        const productPromises = analysisData.impacted_product_ids.map(productId =>
+          getDoc(doc(db, 'hyperverge_products', productId))
+        );
+        const productSnapshots = await Promise.all(productPromises);
+        
+        impactedProducts = productSnapshots
+          .filter(snap => snap.exists())
+          .map(snap => ({
+            id: snap.id,
+            ...snap.data()
+          }));
+      }
+  
+      // Combine all data
+      const enrichedAnalysisData = {
+        id: analysisSnap.id,
+        ...analysisData,
+        impacted_clients: impactedClients,
+        impacted_products: impactedProducts
+      };
+  
+      // Cache the enriched analysis data
+      setCircularAnalysis(prev => ({
+        ...prev,
+        [id]: enrichedAnalysisData
+      }));
+  
+      return enrichedAnalysisData;
     } catch (error) {
       console.error('Error fetching circular analysis:', error);
       return null;
     }
-  };
+  };;
 
   const value = {
     circulars,
@@ -120,6 +162,7 @@ export const DataProvider = ({ children }) => {
     setCurrentPage,
     searchCirculars,
     getCircularById,
+    totalPages
   };
 
   return (
