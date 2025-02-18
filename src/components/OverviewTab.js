@@ -71,17 +71,15 @@ const OverviewTab = ({ circular }) => {
               {circular.past_circular_references?.length > 0 ? (
                 circular.past_circular_references.map((ref, index) => (
                   <div key={index} className="p-4 rounded-lg border border-gray-200 hover:border-[#3C4A94] transition-colors">
-                    <div className="grid grid-cols-12 gap-x-4 gap-y-2">
-                      <div className="col-span-4 text-[#3C4A94] font-medium">Reference:</div>
-                      <div className="col-span-8 text-gray-600 text-right">{ref.reference || 'Not provided'}</div>
-                      
-                      <div className="col-span-4 text-[#3C4A94] font-medium">Date:</div>
-                      <div className="col-span-8 text-gray-600 text-right">{ref.date}</div>
-                      
-                      <div className="col-span-12 ">
-                        <div className="text-[#3C4A94] font-medium mb-1">Relationship:</div>
-                        <div className="text-gray-600">{ref.relationship}</div>
-                      </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-[#3C4A94] font-medium">Reference</div>
+                      <div className="text-gray-600">{ref.reference || 'Not provided'}</div>
+
+                      <div className="text-[#3C4A94] font-medium">Date</div>
+                      <div className="text-gray-600">{ref.date}</div>
+
+                      <div className="text-[#3C4A94] font-medium">Relationship</div>
+                      <div className="text-gray-600">{ref.relationship}</div>
                     </div>
                   </div>
                 ))
@@ -89,10 +87,11 @@ const OverviewTab = ({ circular }) => {
                 <p className="text-gray-600">No past circular references found</p>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          
+        </CardContent>
+      </Card>
     </div>
+    </div >
   );
 };
 

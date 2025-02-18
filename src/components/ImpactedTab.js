@@ -153,7 +153,7 @@ const ImpactedTab = ({ circular }) => {
                 </a>
               )}
             </div>
-            <p className="text-gray-700 text-sm mt-2">{product.description}</p>
+            <p className="text-gray-700 text-sm mt-2">{product.impact_description}</p>
           </div>
         ))}
       </div>

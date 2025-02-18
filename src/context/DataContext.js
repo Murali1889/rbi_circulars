@@ -119,17 +119,18 @@ export const DataProvider = ({ children }) => {
   
       // Fetch impacted products details
       let impactedProducts = [];
-      if (analysisData.impacted_product_ids && analysisData.impacted_product_ids.length > 0) {
-        const productPromises = analysisData.impacted_product_ids.map(productId =>
-          getDoc(doc(db, 'hyperverge_products', productId))
+      if (analysisData.impacted_products && analysisData.impacted_products.length > 0) {
+        const productPromises = analysisData.impacted_products.map(product =>
+          getDoc(doc(db, 'hyperverge_products', product.id))
         );
         const productSnapshots = await Promise.all(productPromises);
         
         impactedProducts = productSnapshots
           .filter(snap => snap.exists())
-          .map(snap => ({
+          .map((snap, index) => ({
             id: snap.id,
-            ...snap.data()
+            ...snap.data(),
+            impact_description: analysisData.impacted_products[index].impact_description || ''
           }));
       }
   
@@ -152,7 +153,7 @@ export const DataProvider = ({ children }) => {
       console.error('Error fetching circular analysis:', error);
       return null;
     }
-  };;
+  };
 
   const value = {
     circulars,
