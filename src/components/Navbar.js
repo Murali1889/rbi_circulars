@@ -1,19 +1,30 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Search, 
-  Loader2, 
-  FileText, 
-  Box, 
-  Users, 
-  ChevronDown, 
+import {
+  Search,
+  Loader2,
+  FileText,
+  Box,
+  Users,
+  ChevronDown,
   ChevronRight,
-  ArrowUpDown
+  ArrowUpDown,
+  LogOut
 } from 'lucide-react';
 import { Input } from "./ui/input";
+import { useAuth } from '../context/AuthContext';
 import { Button } from "./ui/button";
 import { useNavigate } from 'react-router-dom';
 import { getFirestore, collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { useData } from '../context/DataContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+
 
 // Memoize SortButton since it's a pure component
 const SortButton = React.memo(({ onClick, sortOrder }) => (
@@ -23,10 +34,9 @@ const SortButton = React.memo(({ onClick, sortOrder }) => (
     onClick={onClick}
     className="h-8 w-8 p-0 hover:bg-gray-100"
   >
-    <ArrowUpDown 
-      className={`h-4 w-4 transition-transform duration-200 ${
-        sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-500'
-      }`}
+    <ArrowUpDown
+      className={`h-4 w-4 transition-transform duration-200 ${sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-500'
+        }`}
       style={{
         transform: sortOrder === 'asc' ? 'rotate(180deg)' : 'rotate(0deg)'
       }}
@@ -66,7 +76,7 @@ const RelatedCircularsSection = React.memo(({ relatedCirculars, onResultClick })
     <div className="border-t">
       <div className="px-4 py-2 bg-gray-50 border-b flex justify-between items-center">
         <span className="text-sm text-gray-600">Related Circulars</span>
-        <SortButton 
+        <SortButton
           onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
           sortOrder={sortOrder}
         />
@@ -114,13 +124,13 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
 
     try {
       const db = getFirestore();
-      
+
       let analysisRef;
       if (type === 'products') {
         // For products, we need to query differently since impacted_products is an array of objects
         analysisRef = collection(db, 'rbi_circular_analysis');
         const snapshot = await getDocs(analysisRef);
-        
+
         // Filter manually for products since we're looking for a matching id inside objects
         const matchingDocs = snapshot.docs.filter(doc => {
           const data = doc.data();
@@ -128,7 +138,7 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
         });
 
         const circularIds = matchingDocs.map(doc => doc.id);
-        
+
         // Use existing circulars data
         const allCirculars = Object.values(circulars).flat();
         const relatedCirculars = circularIds.map(id => {
@@ -151,7 +161,7 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
         );
         const analysisSnapshot = await getDocs(analysisRef);
         const circularIds = analysisSnapshot.docs.map(doc => doc.id);
-        
+
         const allCirculars = Object.values(circulars).flat();
         const relatedCirculars = circularIds.map(id => {
           const circular = allCirculars.find(c => c.id === id);
@@ -174,16 +184,16 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
         [type]: { ...prev[type], [item.id]: false }
       }));
     }
-}, [circulars, isLoading]);
+  }, [circulars, isLoading]);
 
   const toggleExpand = useCallback(async (type, item) => {
     const newExpandedItems = { ...expandedItems };
     const isCurrentlyExpanded = !newExpandedItems[type][item.id];
-    
+
     Object.keys(newExpandedItems[type]).forEach(key => {
       newExpandedItems[type][key] = false;
     });
-    
+
     newExpandedItems[type][item.id] = isCurrentlyExpanded;
     setExpandedItems(newExpandedItems);
 
@@ -230,16 +240,16 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
                         <div className="flex items-center gap-2">
                           {title !== 'Circulars' && (
                             <div className="flex-shrink-0">
-                              {isExpanded ? 
-                                <ChevronDown className="h-4 w-4 text-gray-500" /> : 
+                              {isExpanded ?
+                                <ChevronDown className="h-4 w-4 text-gray-500" /> :
                                 <ChevronRight className="h-4 w-4 text-gray-500" />
                               }
                             </div>
                           )}
                           <div className="text-sm font-medium text-gray-700 group-hover:text-blue-600 truncate">
                             {title === 'Circulars' ? item.title :
-                             title === 'Clients' ? item.client_name :
-                             item.title}
+                              title === 'Clients' ? item.client_name :
+                                item.title}
                           </div>
                         </div>
                         {title === 'Products' && item.impact_description && (
@@ -280,7 +290,7 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
   }, [expandedItems, isLoading, onResultClick, relatedCirculars, toggleExpand]);
 
   return (
-    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border z-50 flex overflow-hidden">
+    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border z-50 flex">
       {renderSection('Circulars', FileText, results.circulars)}
       {renderSection('Products', Box, results.products)}
       {renderSection('Clients', Users, results.clients)}
@@ -291,6 +301,7 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
 const Navbar = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const { user, logout } = useAuth();
   const [searchResults, setSearchResults] = useState({
     circulars: [],
     products: [],
@@ -334,7 +345,7 @@ const Navbar = () => {
         setIsSearching(true);
         try {
           const db = getFirestore();
-          
+
           const [circularsSnap, productsSnap, clientsSnap] = await Promise.all([
             getDocs(collection(db, 'rbi_circulars')),
             getDocs(collection(db, 'hyperverge_products')),
@@ -342,7 +353,7 @@ const Navbar = () => {
           ]);
 
           const searchValue = value.toLowerCase();
-          
+
           const circulars = circularsSnap.docs
             .filter(doc => doc.data().title?.toLowerCase().includes(searchValue))
             .map(doc => ({ id: doc.id, ...doc.data() }));
@@ -387,12 +398,20 @@ const Navbar = () => {
       });
     }
   }, [navigate]);
+  const getInitials = (name) => {
+    return name
+      ?.split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
 
   return (
     <nav className="bg-white border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 w-full justify-between">
             <div className="relative w-[320px]" ref={searchRef}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -409,16 +428,48 @@ const Navbar = () => {
                   </div>
                 )}
               </div>
-              
+
               {(searchTerm.length >= 2 || searchResults.circulars.length > 0 || searchResults.products.length > 0 || searchResults.clients.length > 0) && (
-                <SearchResults 
+                <SearchResults
                   results={searchResults}
                   onResultClick={handleResultClick}
                 />
               )}
             </div>
+            {user && (
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="focus:outline-none">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 bg-[#D6D5E9] text-[#3C4A94]">
+                    <AvatarFallback>
+                      {getInitials(user.displayName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-gray-600 hidden sm:inline-block">
+                    {user.displayName}
+                  </span>
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem className="text-sm text-gray-500">
+                  {user.email}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
           </div>
         </div>
+       
       </div>
     </nav>
   );
