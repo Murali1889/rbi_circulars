@@ -82,9 +82,9 @@ export const DataProvider = ({ children }) => {
         }
 
         // Client category filter
-        if (activeFilters.clientCategory && analysisData.impacted_client_ids) {
+        if (activeFilters.clientCategory && analysisData.impacted_clients) {
           let hasMatchingClient = false;
-          for (const clientId of analysisData.impacted_client_ids) {
+          for (const clientId of analysisData.impacted_clients) {
             const clientDoc = await getDoc(doc(db, 'hyperverge_clients', clientId));
             if (clientDoc.exists() &&
               clientDoc.data().client_category === activeFilters.clientCategory) {
@@ -299,7 +299,7 @@ export const DataProvider = ({ children }) => {
                 try {
                   const analysisRef = query(
                     collection(db, 'rbi_circular_analysis'),
-                    where('impacted_client_ids', 'array-contains', clientData.id)
+                    where('impacted_clients', 'array-contains', clientData.id)
                   );
                   const analysisSnap = await getDocs(analysisRef);
       
@@ -367,8 +367,8 @@ export const DataProvider = ({ children }) => {
 
       // Fetch impacted clients
       let impactedClients = [];
-      if (analysisData.impacted_client_ids?.length > 0) {
-        const clientPromises = analysisData.impacted_client_ids.map(clientId =>
+      if (analysisData.impacted_clients?.length > 0) {
+        const clientPromises = analysisData.impacted_clients.map(clientId =>
           getDoc(doc(db, 'hyperverge_clients', clientId))
         );
         const clientSnapshots = await Promise.all(clientPromises);

@@ -157,7 +157,7 @@ const SearchResults = React.memo(({ results, onResultClick }) => {
         // For clients, continue using the original query
         analysisRef = query(
           collection(db, 'rbi_circular_analysis'),
-          where('impacted_client_ids', 'array-contains', item.id)
+          where('impacted_clients', 'array-contains', item.id)
         );
         const analysisSnapshot = await getDocs(analysisRef);
         const circularIds = analysisSnapshot.docs.map(doc => doc.id);

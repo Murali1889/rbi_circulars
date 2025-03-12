@@ -6,8 +6,7 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const menuItems = [
         { name: 'RBI', path: '/rbi' },
-        // Add more menu items here as needed
-        // Example: { name: 'SEBI', path: '/sebi' }
+        { name: 'SEBI', path: '/sebi' }
     ];
 
     return (

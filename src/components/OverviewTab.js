@@ -1,7 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
 
 const OverviewTab = ({ circular }) => {
+  // Extract category names from the categories object
+  const categoryNames = circular.categories ? Object.keys(circular.categories) : [];
+  
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-6 md:col-span-1">
@@ -42,45 +46,54 @@ const OverviewTab = ({ circular }) => {
       </div>
 
       <div className="space-y-6 md:col-span-1">
-        {/* Categories Section */}
+        {/* Categories Section - Updated to show only names */}
         <Card className="bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-[#3C4A94] text-xl">Category of the circular</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {circular.categories?.map((category, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <span className="text-gray-700">{category}</span>
-                  <span className="bg-[#D6D5E9] text-[#3C4A94] px-3 py-1 rounded-full font-medium">
-                    {circular.confidence_scores[category]}%
-                  </span>
-                </div>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              {categoryNames.length > 0 ? (
+                categoryNames.map((category) => (
+                  <Badge 
+                    key={category} 
+                    className="bg-[#EEF0FB] text-[#3C4A94] hover:bg-[#D6D5E9] px-3 py-1 text-sm font-medium rounded-full"
+                  >
+                    {category}
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-gray-600">No categories assigned</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Past Circular References Section */}
+        {/* Past Circular References Section - Updated structure */}
         <Card className="bg-white shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-[#3C4A94] text-xl">Past circular references</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {circular.past_circular_references?.length > 0 ? (
-                circular.past_circular_references.map((ref, index) => (
+              {circular.past_circular_reference?.length > 0 ? (
+                circular.past_circular_reference.map((ref, index) => (
                   <div key={index} className="p-4 rounded-lg border border-gray-200 hover:border-[#3C4A94] transition-colors">
-                    <div className="grid grid-cols-12 gap-4">
-                      <div className="col-span-3 text-[#3C4A94] font-medium">Reference</div>
-                      <div className="col-span-9 text-gray-600">{ref.reference || 'Not provided'}</div>
-
-                      <div className="col-span-3 text-[#3C4A94] font-medium">Date</div>
-                      <div className="col-span-9 text-gray-600">{ref.date}</div>
-
-                      <div className="col-span-3 text-[#3C4A94] font-medium">Relationship</div>
-                      <div className="col-span-9 text-gray-600">{ref.relationship}</div>
-                    </div>
+                    <h4 className="text-[#3C4A94] font-medium mb-1">{ref.reference}</h4>
+                    <p className="text-gray-500 text-sm mb-2">{ref.date}</p>
+                    {ref.url && (
+                      <a 
+                        href={ref.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-blue-600 hover:underline text-sm block mb-2"
+                      >
+                        View Circular
+                      </a>
+                    )}
+                    <p className="text-gray-700 text-sm">
+                      {ref.deltaAnalysis || ref.description || 'No details available'}
+                    </p>
                   </div>
                 ))
               ) : (
@@ -90,7 +103,7 @@ const OverviewTab = ({ circular }) => {
           </CardContent>
         </Card>
       </div>
-    </div >
+    </div>
   );
 };
 

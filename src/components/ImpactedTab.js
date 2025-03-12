@@ -3,6 +3,7 @@ import { ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
+import { Alert, AlertDescription } from "./ui/alert";
 
 const CLIENTS_PER_PAGE = 20;
 
@@ -91,9 +92,24 @@ const ImpactedTab = ({ circular }) => {
           const currentPage = categoryPages[category] || 1;
           const startIndex = (currentPage - 1) * CLIENTS_PER_PAGE;
           const paginatedClients = clients.slice(startIndex, startIndex + CLIENTS_PER_PAGE);
+          
+          // Get impact reason for this category if available
+          const categoryInfo = circular?.categories?.[category];
 
           return (
             <TabsContent key={category} value={category} className="mt-4">
+              {/* Display category impact reason and confidence if available */}
+              {categoryInfo && (
+                <Alert className="mb-4 bg-[#EEF0FB] border-[#3C4A94] text-[#3C4A94]">
+                  <AlertDescription>
+                    {/* <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium">Confidence: {categoryInfo.confidence}%</span>
+                    </div> */}
+                    <p>{categoryInfo.reason}</p>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-5 gap-4">
                 {paginatedClients.map((client, index) => (
                   <div 
@@ -115,6 +131,11 @@ const ImpactedTab = ({ circular }) => {
                         </a>
                       )}
                     </div>
+                    {client.impact_reason && (
+                      <p className="text-gray-600 text-sm mt-2 italic">
+                        {client.impact_reason}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -153,7 +174,7 @@ const ImpactedTab = ({ circular }) => {
                 </a>
               )}
             </div>
-            <p className="text-gray-700 text-sm mt-2">{product.impact_description}</p>
+            <p className="text-gray-700 text-sm mt-2">{product.impact_reason || product.impact_description}</p>
           </div>
         ))}
       </div>
