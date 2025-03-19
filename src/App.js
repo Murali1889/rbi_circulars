@@ -27,7 +27,7 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <CircularList />
+                    <CircularList type="rbi" />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
@@ -38,7 +38,7 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <CircularList />
+                    <CircularList type="rbi" />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
@@ -49,25 +49,45 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <CircularDetail />
+                    <CircularDetail type="rbi" />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
             />
 
-            {/* Add more sections here with the same pattern */}
-            {/* Example: SEBI section
+            {/* Protected SEBI routes */}
             <Route
-              path="/sebi/*"
+              path="/sebi"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <SEBIRoutes />
+                    <CircularList type="sebi" />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
-            /> 
-            */}
+            />
+
+            <Route
+              path="/sebi/page/:page"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularList type="sebi" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/sebi/circular/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularDetail type="sebi" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
 
             {/* Catch all route - 404 */}
             <Route

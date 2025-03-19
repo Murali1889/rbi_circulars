@@ -1,33 +1,27 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, limit, where } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, limit, startAfter, where } from 'firebase/firestore';
 
 const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
-  const [circulars, setCirculars] = useState({});
-  const [circularAnalysis, setCircularAnalysis] = useState({});
+  const [circulars, setCirculars] = useState({ rbi: {}, sebi: {} });
+  const [circularAnalysis, setCircularAnalysis] = useState({ rbi: {}, sebi: {} });
   const [products, setProducts] = useState([]);
   const [clientCategories, setClientCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [filters, setFilters] = useState({
-    product: null,
-    clientCategory: null,
-    fromYear: null,
-    toYear: null
-  });
+  const [currentPage, setCurrentPageState] = useState({ rbi: 1, sebi: 1 });
+  const [totalPages, setTotalPages] = useState({ rbi: 0, sebi: 0 });
+  const [lastDocs, setLastDocs] = useState({ rbi: null, sebi: null });
   const ITEMS_PER_PAGE = 6;
 
-  // Fetch initial metadata (products and client categories)
+  const db = getFirestore();
+
+  // Fetch metadata
   useEffect(() => {
     const fetchMetadata = async () => {
       try {
-        const db = getFirestore();
-
-        // Fetch products
         const productsSnap = await getDocs(collection(db, 'hyperverge_products'));
         const productsData = productsSnap.docs.map(doc => ({
           id: doc.id,
@@ -35,13 +29,11 @@ export const DataProvider = ({ children }) => {
         }));
         setProducts(productsData);
 
-        // Fetch unique client categories
         const clientsSnap = await getDocs(collection(db, 'hyperverge_clients'));
         const categories = new Set();
         clientsSnap.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.client_category) {
-            categories.add(data.client_category);
+          if (doc.data().client_category) {
+            categories.add(doc.data().client_category);
           }
         });
         setClientCategories(Array.from(categories));
@@ -49,330 +41,104 @@ export const DataProvider = ({ children }) => {
         console.error('Error fetching metadata:', error);
       }
     };
-
     fetchMetadata();
   }, []);
 
-  // Fetch circulars with filters
-  const fetchCirculars = async (activeFilters = filters) => {
+  // Set current page for specific type
+  const setCurrentPage = (type, page) => {
+    setCurrentPageState(prev => ({ ...prev, [type]: page }));
+  };
+
+  // Fetch circulars by page
+  const getCircularsByPage = async (type, page) => {
     setLoading(true);
     try {
-      const db = getFirestore();
-      const circularsRef = collection(db, 'rbi_circulars');
-      const analysisRef = collection(db, 'rbi_circular_analysis');
+      const collectionName = `${type}_circulars`;
+      let q = query(
+        collection(db, collectionName),
+        orderBy('date', 'desc'),
+        limit(ITEMS_PER_PAGE)
+      );
 
-      // Get all circular analysis documents first
-      const analysisSnap = await getDocs(analysisRef);
-      const matchingCircularIds = new Set();
-
-      // Process each analysis document
-      for (const analysisDoc of analysisSnap.docs) {
-        const analysisData = analysisDoc.data();
-        let matchesFilters = true;
-
-        // Product filter
-        if (activeFilters.product) {
-          const hasProduct = analysisData.impacted_products?.some(
-            p => p.id === activeFilters.product
-          );
-          if (!hasProduct) {
-            matchesFilters = false;
-            continue;
-          }
-        }
-
-        // Client category filter
-        if (activeFilters.clientCategory && analysisData.impacted_clients) {
-          let hasMatchingClient = false;
-          for (const clientId of analysisData.impacted_clients) {
-            const clientDoc = await getDoc(doc(db, 'hyperverge_clients', clientId));
-            if (clientDoc.exists() &&
-              clientDoc.data().client_category === activeFilters.clientCategory) {
-              hasMatchingClient = true;
-              break;
-            }
-          }
-          if (!hasMatchingClient) {
-            matchesFilters = false;
-            continue;
-          }
-        }
-
-        if (matchesFilters) {
-          matchingCircularIds.add(analysisDoc.id);
-        }
+      if (page > 1 && lastDocs[type]) {
+        q = query(
+          collection(db, collectionName),
+          orderBy('date', 'desc'),
+          startAfter(lastDocs[type]),
+          limit(ITEMS_PER_PAGE)
+        );
       }
 
-      // Get all circulars
-      const circularsSnap = await getDocs(circularsRef);
-      let filteredDocs = circularsSnap.docs
-        .filter(doc => {
-          // If we have product or client category filters, only include circulars in matchingCircularIds
-          if ((activeFilters.product || activeFilters.clientCategory) &&
-            !matchingCircularIds.has(doc.id)) {
-            return false;
-          }
+      const snapshot = await getDocs(q);
+      const docs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
 
-          // Apply date filters
-          if (activeFilters.fromYear || activeFilters.toYear) {
-            const circularYear = new Date(doc.data().date).getFullYear();
-            if (activeFilters.fromYear && circularYear < parseInt(activeFilters.fromYear)) {
-              return false;
-            }
-            if (activeFilters.toYear && circularYear > parseInt(activeFilters.toYear)) {
-              return false;
-            }
-          }
-          return true;
-        })
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+      // Update last document for pagination
+      setLastDocs(prev => ({
+        ...prev,
+        [type]: snapshot.docs[snapshot.docs.length - 1]
+      }));
 
-      // Sort by date
-      const sortedDocs = filteredDocs.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateB - dateA;
-      });
+      // Get total count for pagination
+      const totalSnap = await getDocs(collection(db, collectionName));
+      const totalCount = totalSnap.size;
+      const calculatedTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-      // Calculate total pages
-      const calculatedTotalPages = Math.ceil(sortedDocs.length / ITEMS_PER_PAGE);
-      setTotalPages(calculatedTotalPages);
+      setTotalPages(prev => ({
+        ...prev,
+        [type]: calculatedTotalPages
+      }));
 
-      // Organize into pages
-      const organizedCirculars = {};
-      for (let page = 1; page <= calculatedTotalPages; page++) {
-        const startIndex = (page - 1) * ITEMS_PER_PAGE;
-        organizedCirculars[page] = sortedDocs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-      }
-
-      setCirculars(organizedCirculars);
-      setCurrentPage(1); // Reset to first page when filters change
+      setCirculars(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [page]: docs
+        }
+      }));
     } catch (error) {
-      console.error('Error fetching circulars:', error);
+      console.error(`Error fetching ${type} circulars:`, error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Apply filters
-  const applyFilters = async (newFilters) => {
-    setFilters(newFilters);
-    await fetchCirculars(newFilters);
-  };
-
-  // Clear filters
-  const clearFilters = async () => {
-    const emptyFilters = {
-      product: null,
-      clientCategory: null,
-      fromYear: null,
-      toYear: null
-    };
-    setFilters(emptyFilters);
-    await fetchCirculars(emptyFilters);
-  };
-
-  // Initial fetch
-  useEffect(() => {
-    fetchCirculars();
-  }, []);
-
-  const searchAllContent = async (searchTerm) => {
-    if (!searchTerm || searchTerm.trim().length < 2) {
-      return {
-        circulars: [],
-        products: [],
-        clients: [],
-        loading: false
-      };
+  // Fetch circular analysis by ID
+  const getCircularById = async (type, id) => {
+    if (circularAnalysis[type]?.[id]) {
+      return circularAnalysis[type][id];
     }
 
-    const db = getFirestore();
-    const searchTermLower = searchTerm.toLowerCase();
+    let analysisRef;
+    let circularRef;
 
     try {
-      // Parallel search functions
-      const searchCirculars = async () => {
-        try {
-          const circularsRef = collection(db, 'rbi_circulars');
-          
-          // Fetch all circulars and filter client-side
-          const circularsSnap = await getDocs(circularsRef);
-          
-          // Filter circulars that include the search term (case-insensitive)
-          const matchingCirculars = circularsSnap.docs
-            .filter(doc => {
-              const title = doc.data().title.toLowerCase();
-              return title.includes(searchTerm.toLowerCase());
-            })
-            .slice(0, 5) // Limit to 5 results
-            .map(doc => ({
-              id: doc.id,
-              ...doc.data()
-            }));
-      
-          return matchingCirculars;
-        } catch (error) {
-          console.error('Circulars search error:', error);
-          return [];
-        }
-      };
-      
-      const searchProducts = async () => {
-        try {
-          const productsRef = collection(db, 'hyperverge_products');
-          
-          // Fetch all products and filter client-side
-          const productsSnap = await getDocs(productsRef);
-          
-          // Filter products that include the search term (case-insensitive)
-          const matchingProducts = await Promise.all(
-            productsSnap.docs
-              .filter(doc => {
-                const title = doc.data().title.toLowerCase();
-                return title.includes(searchTerm.toLowerCase());
-              })
-              .slice(0, 5) // Limit to 5 results
-              .map(async (productDoc) => {
-                const productData = {
-                  id: productDoc.id,
-                  ...productDoc.data()
-                };
-      
-                // Try to find associated circular analysis
-                try {
-                  const analysisRef = query(
-                    collection(db, 'rbi_circular_analysis'),
-                    where('impacted_products', 'array-contains', { id: productData.id })
-                  );
-                  const analysisSnap = await getDocs(analysisRef);
-      
-                  const circularId = analysisSnap.docs.length > 0
-                    ? analysisSnap.docs[0].id
-                    : null;
-      
-                  return {
-                    ...productData,
-                    circularId,
-                    impact_description: analysisSnap.docs[0]?.data()?.impacted_products
-                      ?.find(p => p.id === productData.id)?.impact_description || ''
-                  };
-                } catch (error) {
-                  console.error('Product circular search error:', error);
-                  return productData;
-                }
-              })
-          );
-      
-          return matchingProducts;
-        } catch (error) {
-          console.error('Products search error:', error);
-          return [];
-        }
-      };
-      
-      const searchClients = async () => {
-        try {
-          const clientsRef = collection(db, 'hyperverge_clients');
-          
-          // Fetch all clients and filter client-side
-          const clientsSnap = await getDocs(clientsRef);
-          
-          // Filter clients that include the search term (case-insensitive)
-          const matchingClients = await Promise.all(
-            clientsSnap.docs
-              .filter(doc => {
-                const clientName = doc.data().client_name.toLowerCase();
-                return clientName.includes(searchTerm.toLowerCase());
-              })
-              .slice(0, 5) // Limit to 5 results
-              .map(async (clientDoc) => {
-                const clientData = {
-                  id: clientDoc.id,
-                  ...clientDoc.data()
-                };
-      
-                // Try to find associated circular analysis
-                try {
-                  const analysisRef = query(
-                    collection(db, 'rbi_circular_analysis'),
-                    where('impacted_clients', 'array-contains', clientData.id)
-                  );
-                  const analysisSnap = await getDocs(analysisRef);
-      
-                  const circularId = analysisSnap.docs.length > 0
-                    ? analysisSnap.docs[0].id
-                    : null;
-      
-                  return {
-                    ...clientData,
-                    circularId
-                  };
-                } catch (error) {
-                  console.error('Client circular search error:', error);
-                  return clientData;
-                }
-              })
-          );
-      
-          return matchingClients;
-        } catch (error) {
-          console.error('Clients search error:', error);
-          return [];
-        }
-      };
-
-      // Perform searches in parallel
-      const [circulars, products, clients] = await Promise.all([
-        searchCirculars(),
-        searchProducts(),
-        searchClients()
-      ]);
-
-      return {
-        circulars,
-        products,
-        clients,
-        loading: false
-      };
-    } catch (error) {
-      console.error('Overall search error:', error);
-      return {
-        circulars: [],
-        products: [],
-        clients: [],
-        loading: false
-      };
-    }
-  };
-
-  const getCircularById = async (id) => {
-    if (circularAnalysis[id]) {
-      return circularAnalysis[id];
-    }
-
-    try {
-      const db = getFirestore();
-      const analysisRef = doc(db, 'rbi_circular_analysis', id);
+      if(type==='rbi'){
+        analysisRef = doc(db, `rbi_circular_analysis`, id);
+        circularRef = doc(db, `rbi_circulars`, id);
+      }
+      else if(type==='sebi'){
+        analysisRef = doc(db, `sebi_circular_analysis`, id);
+        circularRef = doc(db, `sebi_circulars`, id);
+      }
       const analysisSnap = await getDoc(analysisRef);
+      const circularSnap = await getDoc(circularRef)
 
-      if (!analysisSnap.exists()) {
+      if (!analysisSnap.exists() || !circularSnap.exists()) {
         return null;
       }
 
       const analysisData = analysisSnap.data();
+      const circularData = circularSnap.data();
 
-      // Fetch impacted clients
       let impactedClients = [];
       if (analysisData.impacted_clients?.length > 0) {
         const clientPromises = analysisData.impacted_clients.map(clientId =>
           getDoc(doc(db, 'hyperverge_clients', clientId))
         );
         const clientSnapshots = await Promise.all(clientPromises);
-
         impactedClients = clientSnapshots
           .filter(snap => snap.exists())
           .map(snap => ({
@@ -381,14 +147,12 @@ export const DataProvider = ({ children }) => {
           }));
       }
 
-      // Fetch impacted products
       let impactedProducts = [];
       if (analysisData.impacted_products?.length > 0) {
         const productPromises = analysisData.impacted_products.map(product =>
           getDoc(doc(db, 'hyperverge_products', product.id))
         );
         const productSnapshots = await Promise.all(productPromises);
-
         impactedProducts = productSnapshots
           .filter(snap => snap.exists())
           .map((snap, index) => ({
@@ -402,17 +166,21 @@ export const DataProvider = ({ children }) => {
         id: analysisSnap.id,
         ...analysisData,
         impacted_clients: impactedClients,
-        impacted_products: impactedProducts
+        impacted_products: impactedProducts,
+        ...circularData
       };
 
       setCircularAnalysis(prev => ({
         ...prev,
-        [id]: enrichedAnalysisData
+        [type]: {
+          ...prev[type],
+          [id]: enrichedAnalysisData
+        }
       }));
 
       return enrichedAnalysisData;
     } catch (error) {
-      console.error('Error fetching circular analysis:', error);
+      console.error(`Error fetching ${type} circular analysis:`, error);
       return null;
     }
   };
@@ -423,14 +191,11 @@ export const DataProvider = ({ children }) => {
     loading,
     currentPage,
     setCurrentPage,
-    searchAllContent,
+    getCircularsByPage,
     getCircularById,
     totalPages,
     products,
-    clientCategories,
-    filters,
-    applyFilters,
-    clearFilters
+    clientCategories
   };
 
   return (

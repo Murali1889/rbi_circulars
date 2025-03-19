@@ -7,23 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import OverviewTab from './OverviewTab';
 import ImpactedTab from './ImpactedTab';
 
-const CircularDetail = () => {
+const CircularDetail = ({ type }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getCircularById, circulars } = useData();
   const [circular, setCircular] = useState(null);
   const [loading, setLoading] = useState(true);
+  console.log(circular)
 
   useEffect(() => {
     const fetchCircular = async () => {
       try {
-        const data = await getCircularById(id);
+        const data = await getCircularById(type, id);
+        console.log(data)
         if (data) {
-          const circularWithUrls = circulars[1]?.find(c => c.id === id);
           setCircular({
             ...data,
-            documentUrl: circularWithUrls?.documentUrl,
-            pdfUrl: circularWithUrls?.pdfUrl
           });
         } else {
           navigate('/not-found');
@@ -81,10 +80,10 @@ const CircularDetail = () => {
           <CardHeader className="border-b">
             <div className="space-y-4">
               <CardTitle className="text-2xl text-[#3C4A94]">{circular.title}</CardTitle>
-              
+
               {/* Document Actions */}
               <div className="flex flex-wrap gap-4">
-                {circular?.documentUrl && (
+                {(circular?.documentUrl || circular?.url ) && (
                   <a
                     href={circular.documentUrl}
                     target="_blank"
@@ -113,13 +112,13 @@ const CircularDetail = () => {
           <CardContent className="p-0">
             <Tabs defaultValue="overview" className="w-full">
               <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-white">
-                <TabsTrigger 
+                <TabsTrigger
                   value="overview"
                   className="data-[state=active]:border-b-2 data-[state=active]:border-[#3C4A94] data-[state=active]:text-[#3C4A94] rounded-none px-6 py-3"
                 >
                   Circular Overview
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="impacted"
                   className="data-[state=active]:border-b-2 data-[state=active]:border-[#3C4A94] data-[state=active]:text-[#3C4A94] rounded-none px-6 py-3"
                 >
