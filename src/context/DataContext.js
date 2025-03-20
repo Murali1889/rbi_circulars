@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, limit, startAfter, where } from 'firebase/firestore';
 
+
 const DataContext = createContext();
 
 export const useData = () => useContext(DataContext);
@@ -38,7 +39,7 @@ export const DataProvider = ({ children }) => {
         });
         setClientCategories(Array.from(categories));
       } catch (error) {
-        console.error('Error fetching metadata:', error);
+        // console.error('Error fetching metadata:', error);
       }
     };
     fetchMetadata();
@@ -49,57 +50,128 @@ export const DataProvider = ({ children }) => {
     setCurrentPageState(prev => ({ ...prev, [type]: page }));
   };
 
-  // Fetch circulars by page
-  const getCircularsByPage = async (type, page) => {
+
+  const parseDateString = (dateStr) => {
+    // Remove any extra whitespace
+    dateStr = dateStr.trim();
+  
+    // Check for "DD-MM-YYYY" format (e.g., "29-12-2021")
+    const ddmmyyyyMatch = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, day, month, year] = ddmmyyyyMatch;
+      // JavaScript months are 0-based, so subtract 1 from month when constructing Date
+      const date = new Date(`${year}-${month}-${day}`);
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date format for "${dateStr}"`);
+        return null; // Return null for invalid dates
+      }
+      return date;
+    }
+  
+    // Check for "MMM DD, YYYY" format (e.g., "Dec 11, 2015")
+    const mmmddyyyyMatch = dateStr.match(/^([A-Za-z]{3}) (\d{1,2}), (\d{4})$/);
+    if (mmmddyyyyMatch) {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date format for "${dateStr}"`);
+        return null;
+      }
+      return date;
+    }
+  
+    // If format doesn't match, log a warning and return null
+    console.warn(`Unrecognized date format for "${dateStr}"`);
+    return null;
+  };
+  
+  const getCircularsByPage = async (type, page, fromDate) => {
+    // console.log(`Fetching ${type} circulars, page ${page}, fromDate: ${fromDate}`);
     setLoading(true);
     try {
       const collectionName = `${type}_circulars`;
-      let q = query(
-        collection(db, collectionName),
-        orderBy('date', 'desc'),
-        limit(ITEMS_PER_PAGE)
-      );
-
-      if (page > 1 && lastDocs[type]) {
+  
+      // Parse fromDate into a Date object if provided
+      const fromDateObj = fromDate ? new Date(fromDate) : null;
+      const fromDateStr = fromDateObj
+        ? fromDateObj.toLocaleDateString('en-US', {
+            month: 'short',
+            day: '2-digit',
+            year: 'numeric',
+          })
+        : null;
+      console.log(`Parsed fromDate: ${fromDateStr}`);
+  
+      // Fetch all documents (no orderBy since string sorting is unreliable)
+      let q = query(collection(db, collectionName));
+      if (fromDateStr) {
         q = query(
           collection(db, collectionName),
-          orderBy('date', 'desc'),
-          startAfter(lastDocs[type]),
-          limit(ITEMS_PER_PAGE)
+          where('date', '>=', fromDateStr)
         );
       }
-
+  
       const snapshot = await getDocs(q);
-      const docs = snapshot.docs.map(doc => ({
+      console.log(`Total fetched: ${snapshot.size}`);
+  
+      // Convert to array and add Date object for sorting
+      let docs = snapshot.docs
+        .map(doc => {
+          const data = doc.data();
+          const dateObj = parseDateString(data.date);
+          if (!dateObj) {
+            console.warn(`Skipping document ${doc.id} due to invalid date: ${data.date}`);
+            return null; // Skip documents with invalid dates
+          }
+          return {
+            id: doc.id,
+            ...data,
+            dateObj, // Add parsed Date object for sorting
+          };
+        })
+        .filter(doc => doc !== null); // Remove null entries (invalid dates)
+  
+      // Sort by date descending (latest first)
+      docs.sort((a, b) => b.dateObj - a.dateObj);
+      // console.log('Sorted docs:', docs);
+  
+      // Paginate
+      const startIndex = (page - 1) * ITEMS_PER_PAGE;
+      const paginatedDocs = docs.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  
+      // Clean up for state (keep original string date)
+      const finalDocs = paginatedDocs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        date: doc.date,
+        ...doc,
       }));
-
-      // Update last document for pagination
-      setLastDocs(prev => ({
-        ...prev,
-        [type]: snapshot.docs[snapshot.docs.length - 1]
-      }));
-
-      // Get total count for pagination
-      const totalSnap = await getDocs(collection(db, collectionName));
-      const totalCount = totalSnap.size;
-      const calculatedTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-
+      console.log('Paginated docs:', finalDocs);
+  
+      // Calculate total pages
+      const totalCount = docs.length;
+      const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+      // console.log(`Total count: ${totalCount}, Total pages: ${totalPages}`);
+  
+      // Update state
       setTotalPages(prev => ({
         ...prev,
-        [type]: calculatedTotalPages
+        [type]: totalPages,
       }));
-
-      setCirculars(prev => ({
-        ...prev,
-        [type]: {
-          ...prev[type],
-          [page]: docs
-        }
-      }));
+  
+      setCirculars(prev => {
+        const updated = {
+          ...prev,
+          [type]: {
+            ...prev[type],
+            [page]: finalDocs,
+          },
+        };
+        // console.log('Updated circulars:', updated);
+        return updated;
+      });
+  
+      return { docs: finalDocs, totalPages };
     } catch (error) {
-      console.error(`Error fetching ${type} circulars:`, error);
+      // console.error(`Error fetching ${type} circulars:`, error);
     } finally {
       setLoading(false);
     }
@@ -122,6 +194,10 @@ export const DataProvider = ({ children }) => {
       else if(type==='sebi'){
         analysisRef = doc(db, `sebi_circular_analysis`, id);
         circularRef = doc(db, `sebi_circulars`, id);
+      }
+      else if(type==='irdai'){
+        analysisRef = doc(db, `irdai_circular_analysis`, id);
+        circularRef = doc(db, `irdai_circulars`, id);
       }
       const analysisSnap = await getDoc(analysisRef);
       const circularSnap = await getDoc(circularRef)
@@ -147,26 +223,26 @@ export const DataProvider = ({ children }) => {
           }));
       }
 
-      let impactedProducts = [];
-      if (analysisData.impacted_products?.length > 0) {
-        const productPromises = analysisData.impacted_products.map(product =>
-          getDoc(doc(db, 'hyperverge_products', product.id))
-        );
-        const productSnapshots = await Promise.all(productPromises);
-        impactedProducts = productSnapshots
-          .filter(snap => snap.exists())
-          .map((snap, index) => ({
-            id: snap.id,
-            ...snap.data(),
-            impact_description: analysisData.impacted_products[index].impact_description || ''
-          }));
-      }
+      // let impactedProducts = [];
+      // if (analysisData.impacted_products?.length > 0) {
+      //   const productPromises = analysisData.impacted_products.map(product =>
+      //     getDoc(doc(db, 'hyperverge_products', product.id))
+      //   );
+      //   const productSnapshots = await Promise.all(productPromises);
+      //   impactedProducts = productSnapshots
+      //     .filter(snap => snap.exists())
+      //     .map((snap, index) => ({
+      //       id: snap.id,
+      //       ...snap.data(),
+      //       impact_description: analysisData.impacted_products[index].impact_description || ''
+      //     }));
+      // }
 
       const enrichedAnalysisData = {
         id: analysisSnap.id,
         ...analysisData,
         impacted_clients: impactedClients,
-        impacted_products: impactedProducts,
+        // impacted_products: impactedProducts,
         ...circularData
       };
 
@@ -180,7 +256,7 @@ export const DataProvider = ({ children }) => {
 
       return enrichedAnalysisData;
     } catch (error) {
-      console.error(`Error fetching ${type} circular analysis:`, error);
+      // console.error(`Error fetching ${type} circular analysis:`, error);
       return null;
     }
   };

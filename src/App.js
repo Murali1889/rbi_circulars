@@ -89,6 +89,39 @@ const App = () => {
               }
             />
 
+<Route
+              path="/irdai"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularList type="irdai" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/irdai/page/:page"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularList type="irdai" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/irdai/circular/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularDetail type="irdai" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
             {/* Catch all route - 404 */}
             <Route
               path="*"
