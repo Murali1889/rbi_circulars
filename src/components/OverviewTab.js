@@ -218,7 +218,7 @@ const OverviewTab = ({ circular, colors }) => {
               <p className="text-base text-gray-600">No past references found.</p>
             )}
             {/* Scroll Indicators */}
-            {pastRefs.length > 2 && (
+            {/* {pastRefs.length > 2 && (
               <>
                 <div className="absolute top-5 left-1/2 transform -translate-x-1/2 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center opacity-75 pointer-events-none">
                   <ChevronUp className="h-5 w-5 text-gray-600" />
@@ -227,7 +227,7 @@ const OverviewTab = ({ circular, colors }) => {
                   <ChevronDown className="h-5 w-5 text-gray-600" />
                 </div>
               </>
-            )}
+            )} */}
           </CardContent>
         </Card>
       </div>

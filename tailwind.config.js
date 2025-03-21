@@ -39,6 +39,23 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      animation: {
+        'bounce-slow': 'bounce-slow 3s infinite ease-in-out',
+        'float': 'float 6s infinite ease-in-out',
+        'float-delayed': 'float 6s infinite ease-in-out 2s',
+      },
+      keyframes: {
+        'bounce-slow': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0) translateX(0)' },
+          '25%': { transform: 'translateY(-15px) translateX(10px)' },
+          '50%': { transform: 'translateY(-25px) translateX(0)' },
+          '75%': { transform: 'translateY(-15px) translateX(-10px)' },
+        },
+      },
       borderRadius: {
         lg: `var(--radius)`,
         md: `calc(var(--radius) - 2px)`,
