@@ -123,6 +123,39 @@ const App = () => {
               }
             />
 
+<Route
+              path="/meity"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularList type="meity" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/meity/page/:page"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularList type="meity" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/meity/circular/:id"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CircularDetail type="meity" />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+
             {/* Catch all route - 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -7,14 +7,14 @@ const DataContext = createContext();
 export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
-  const [circulars, setCirculars] = useState({ rbi: {}, sebi: {} });
-  const [circularAnalysis, setCircularAnalysis] = useState({ rbi: {}, sebi: {} });
+  const [circulars, setCirculars] = useState({ rbi: {}, sebi: {}, irdai:{}, meity:{} });
+  const [circularAnalysis, setCircularAnalysis] = useState({ rbi: {}, sebi: {}, irdai:{}, meity:{} });
   const [products, setProducts] = useState([]);
   const [clientCategories, setClientCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPageState] = useState({ rbi: 1, sebi: 1 });
-  const [totalPages, setTotalPages] = useState({ rbi: 0, sebi: 0 });
-  const [lastDocs, setLastDocs] = useState({ rbi: null, sebi: null });
+  const [currentPage, setCurrentPageState] = useState({ rbi: 1, sebi: 1, irdai:1, meity:1 });
+  const [totalPages, setTotalPages] = useState({ rbi: 0, sebi: 0, irdai:0, meity:0 });
+  const [lastDocs, setLastDocs] = useState({ rbi: null, sebi: null, irdai:0, meity:0 });
   const ITEMS_PER_PAGE = 6;
 
   const db = getFirestore();
@@ -118,14 +118,14 @@ export const DataProvider = ({ children }) => {
         .map(doc => {
           const data = doc.data();
           const dateObj = parseDateString(data.date);
-          if (!dateObj) {
-            console.warn(`Skipping document ${doc.id} due to invalid date: ${data.date}`);
-            return null; // Skip documents with invalid dates
-          }
+          // if (!dateObj) {
+          //   console.warn(`Skipping document ${doc.id} due to invalid date: ${data.date}`);
+          //   return null; // Skip documents with invalid dates
+          // }
           return {
             id: doc.id,
             ...data,
-            dateObj, // Add parsed Date object for sorting
+            dateObj , // Add parsed Date object for sorting
           };
         })
         .filter(doc => doc !== null); // Remove null entries (invalid dates)
@@ -198,6 +198,10 @@ export const DataProvider = ({ children }) => {
       else if(type==='irdai'){
         analysisRef = doc(db, `irdai_circular_analysis`, id);
         circularRef = doc(db, `irdai_circulars`, id);
+      }
+      else if(type==='meity'){
+        analysisRef = doc(db, `meity_circular_analysis`, id);
+        circularRef = doc(db, `meity_circulars`, id);
       }
       const analysisSnap = await getDoc(analysisRef);
       const circularSnap = await getDoc(circularRef)

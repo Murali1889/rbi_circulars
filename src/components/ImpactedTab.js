@@ -186,7 +186,7 @@ const ImpactedTab = ({ circular, colors }) => {
       >
         <CardHeader className="pb-3" style={{ borderColor: colors.border }}>
           <CardTitle className="text-xl font-semibold" style={{ color: colors.primary }}>
-            List of Clients Potentially Impacted
+          Impacted Clients (by Category)
           </CardTitle>
         </CardHeader>
         <CardContent>{renderClientsByCategory()}</CardContent>
@@ -198,7 +198,7 @@ const ImpactedTab = ({ circular, colors }) => {
       >
         <CardHeader className="pb-3" style={{ borderColor: colors.border }}>
           <CardTitle className="text-xl font-semibold" style={{ color: colors.primary }}>
-            List of HV's Products Mentioned/Impacted
+          Impacted HyperVerge Products 
           </CardTitle>
         </CardHeader>
         <CardContent>{renderProducts()}</CardContent>

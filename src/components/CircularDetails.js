@@ -12,33 +12,43 @@ const getTypeColors = (type) => {
   switch (type.toLowerCase()) {
     case 'sebi':
       return {
-        primary: '#1E3A8A',
-        hover: '#172554',
-        light: '#DBEAFE',
-        text: '#1E3A8A',
-        border: '#93C5FD',
-        shadow: 'rgba(30, 58, 138, 0.15)',
-        accent: '#3B82F6',
+        primary: '#1E3A8A', // Deep blue
+        hover: '#172554',   // Darker blue
+        light: '#DBEAFE',   // Light blue background
+        text: '#1E3A8A',    // Matching text
+        border: '#93C5FD',  // Soft blue border
+        shadow: 'rgba(30, 58, 138, 0.15)', // Subtle blue shadow
+        accent: '#3B82F6',  // Bright blue accent
       };
     case 'irdai':
       return {
-        primary: '#047857',
-        hover: '#065F46',
-        light: '#D1FAE5',
-        text: '#047857',
-        border: '#6EE7B7',
-        shadow: 'rgba(4, 120, 87, 0.15)',
-        accent: '#10B981',
+        primary: '#047857', // Emerald green
+        hover: '#065F46',   // Darker green
+        light: '#D1FAE5',   // Light green background
+        text: '#047857',    // Matching text
+        border: '#6EE7B7',  // Soft green border
+        shadow: 'rgba(4, 120, 87, 0.15)', // Subtle green shadow
+        accent: '#10B981',  // Vibrant green accent
+      };
+    case 'meity':
+      return {
+        primary: '#1A3C34', // Deep teal/charcoal
+        hover: '#122C26',   // Darker teal
+        light: '#D1E8E2',   // Soft muted teal background
+        text: '#1A3C34',    // Matching text
+        border: '#7AB8A8',  // Smooth teal border
+        shadow: 'rgba(26, 60, 52, 0.2)', // Subtle dark teal shadow
+        accent: '#2D6A5D',  // Rich teal accent
       };
     default:
       return {
-        primary: '#3C4A94',
-        hover: '#2D3970',
-        light: '#D6D5E9',
-        text: '#3C4A94',
-        border: '#A5B4FC',
-        shadow: 'rgba(60, 74, 148, 0.15)',
-        accent: '#6366F1',
+        primary: '#3C4A94', // Default purple-blue
+        hover: '#2D3970',   // Darker shade
+        light: '#D6D5E9',   // Light purple background
+        text: '#3C4A94',    // Matching text
+        border: '#A5B4FC',  // Soft purple border
+        shadow: 'rgba(60, 74, 148, 0.15)', // Subtle shadow
+        accent: '#6366F1',  // Vibrant purple accent
       };
   }
 };
