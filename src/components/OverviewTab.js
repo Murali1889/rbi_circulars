@@ -50,25 +50,45 @@ const OverviewTab = ({ circular, colors }) => {
     const additionsMatch = text.match(/Additions:\n([\s\S]*?)(Modifications:|Removals:|$)/);
     const modificationsMatch = text.match(/Modifications:\n([\s\S]*?)(Removals:|$)/);
     const removalsMatch = text.match(/Removals:\n([\s\S]*?)$/);
+    console.log(text);
+    console.log(additionsMatch)
 
     if (additionsMatch) {
       sections.additions = additionsMatch[1]
         .split('\n')
-        .filter((line) => line.trim().startsWith('•') && line.replace('•', '').trim())
-        .map((line) => line.replace(/^• /, '').trim());
+        .filter((line) => {
+          const trimmedLine = line.trim();
+          // Check if line starts with either '•' or '-' and has content after the bullet
+          return (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) && 
+                 trimmedLine.replace(/[•-]/, '').trim().length > 0;
+        })
+        .map((line) => line.replace(/^[•-]\s*/, '').trim());
     }
+    console.log("[Parsing] Additions:", sections);
+    
     if (modificationsMatch) {
       sections.modifications = modificationsMatch[1]
         .split('\n')
-        .filter((line) => line.trim().startsWith('•') && line.replace('•', '').trim())
-        .map((line) => line.replace(/^• /, '').trim());
+        .filter((line) => {
+          const trimmedLine = line.trim();
+          return (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) && 
+                 trimmedLine.replace(/[•-]/, '').trim().length > 0;
+        })
+        .map((line) => line.replace(/^[•-]\s*/, '').trim());
     }
+    console.log("[Parsing] Modifications:", sections);
+    
     if (removalsMatch) {
       sections.removals = removalsMatch[1]
         .split('\n')
-        .filter((line) => line.trim().startsWith('•') && line.replace('•', '').trim())
-        .map((line) => line.replace(/^• /, '').trim());
+        .filter((line) => {
+          const trimmedLine = line.trim();
+          return (trimmedLine.startsWith('•') || trimmedLine.startsWith('-')) && 
+                 trimmedLine.replace(/[•-]/, '').trim().length > 0;
+        })
+        .map((line) => line.replace(/^[•-]\s*/, '').trim());
     }
+    console.log("[Parsing] Removals:", sections);
 
     return sections;
   };
